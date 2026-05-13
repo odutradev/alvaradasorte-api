@@ -1,9 +1,6 @@
-import { Op } from 'sequelize'
-
 import type { FilterConfig } from '@core/factories/filters/types'
-import type { WhereOptions } from 'sequelize'
 
-export const parseFilters = (filtersString?: string, config?: FilterConfig): WhereOptions => {
+export const parseFilters = (filtersString?: string, config?: FilterConfig): Record<string, string> => {
   if (!filtersString) return {}
   if (!config) return {}
 
@@ -20,10 +17,26 @@ export const parseFilters = (filtersString?: string, config?: FilterConfig): Whe
     return acc
   }, [])
 
-  return entries.reduce<WhereOptions>((acc, [key, value]) => {
+  return entries.reduce<Record<string, string>>((acc, [key, value]) => {
     if (allowedExact.includes(key)) return { ...acc, [key]: value }
-    if (allowedPartial.includes(key)) return { ...acc, [key]: { [Op.iLike]: `%${value}%` } }
+    if (allowedPartial.includes(key)) return { ...acc, [key]: value }
 
     return acc
   }, {})
+}
+
+export const applyInMemoryFilters = <T extends Record<string, unknown>>(data: T[], filters: Record<string, string>, config: FilterConfig): T[] => {
+  if (Object.keys(filters).length === 0) return data
+
+  return data.filter((item) => {
+    return Object.entries(filters).every(([key, value]) => {
+      const itemValue = String(item[key] ?? '').toLowerCase()
+      const filterValue = String(value).toLowerCase()
+
+      if (config.exact?.includes(key)) return itemValue === filterValue
+      if (config.partial?.includes(key)) return itemValue.includes(filterValue)
+
+      return true
+    })
+  })
 }

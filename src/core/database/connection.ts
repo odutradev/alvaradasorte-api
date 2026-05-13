@@ -1,11 +1,26 @@
-import { Sequelize } from 'sequelize'
+import * as admin from 'firebase-admin'
 
-export const sequelize = new Sequelize({
-  password: String(process.env.DB_PASSWORD ?? ''),
-  username: String(process.env.DB_USER ?? 'postgres'),
-  database: String(process.env.DB_NAME ?? 'uailab'),
-  host: String(process.env.DB_HOST ?? 'localhost'),
-  port: Number(process.env.DB_PORT) || 5432,
-  dialect: 'postgres',
-  logging: false
-})
+const getPrivateKey = (): string => {
+  const key = process.env.FIREBASE_PRIVATE_KEY
+
+  if (!key) return ''
+
+  return key.replace(/\\n/g, '\n')
+}
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: getPrivateKey()
+    }),
+    databaseURL: process.env.FIREBASE_DATABASE_URL,
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET
+  })
+}
+
+export const firebaseApp = admin.app()
+export const firebaseAuth = admin.auth()
+export const firebaseDb = admin.database()
+export const firebaseStorage = admin.storage()

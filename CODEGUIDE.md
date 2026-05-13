@@ -1,4 +1,3 @@
-
 ## **Comandos Disponíveis**
 
 * npm run dev: Inicia o servidor em modo de desenvolvimento (watch).  
@@ -22,10 +21,7 @@ Independentemente de estar em shared ou modules, um módulo completo deve possui
 
 * index.ts (Ponto de entrada e definição do módulo)  
 * routes/index.ts (Orquestrador de rotas Express)  
-* models/ (Modelos Sequelize e associações)  
-  * entidade.ts  
-  * associations.ts  
-* repositories/ (Camada de acesso a dados)  
+* repositories/ (Camada de acesso a dados usando Firebase Realtime Database)  
   * entidade/index.ts  
   * entidade/types.ts  
 * actions/ (Controladores lógicos e definição OpenAPI)  
@@ -37,28 +33,26 @@ Independentemente de estar em shared ou modules, um módulo completo deve possui
 
 #### **1\. Definição do Módulo (index.ts principal)**
 
-Todo módulo deve exportar um objeto do tipo AppModule contendo seu nome, roteador, prefixo e carregamento de modelos.
+Todo módulo deve exportar um objeto do tipo AppModule contendo seu nome, roteador, e prefixo.
+
 ```ts
 import rotasMeuModulo from '@modules/meu-modulo/routes/index'  
-import { setupAssociations } from '@modules/meu-modulo/models/associations'
 
 import type { AppModule } from '@core/types/module'
 
-const meuModulo: AppModule \= {  
+const meuModulo: AppModule = {  
   name: 'meu-modulo',  
   router: rotasMeuModulo,  
-  routePrefix: '/meu-modulo/v1',  
-  loadModels: async () \=\> {  
-    await import('@modules/meu-modulo/models/entidade')  
-    setupAssociations()  
-  }  
+  routePrefix: '/meu-modulo/v1'
 }
 
 export default meuModulo
 ```
+
 #### **2\. Ações / Controllers (actions/entidade/index.ts)**
 
 As ações **não usam** controllers tradicionais do Express. Elas usam a factory defineAction que integra rotas, validação Zod, OpenAPI e injeção de dependências (ids, manageError).
+
 ```ts
 import defineAction from '@core/factories/defineAction'  
 import { schemaExemplo } from './schemas'  
@@ -67,32 +61,34 @@ import repositorioEntidade from '@modules/meu-modulo/repositories/entidade'
 import type { ManageRequestResponse, ManageRequestBody } from '@core/middlewares/manageRequest/types'  
 import type { ExemploRequest, ExemploResponse } from './types'
 
-export const criarExemplo \= defineAction(  
+export const criarExemplo = defineAction(  
   {  
     method: 'post',  
     path: '/meu-modulo/v1/entidades/create',  
     summary: 'Criar nova entidade',  
-    tags: \['Meu Módulo \- Entidades'\],  
+    tags: ['Meu Módulo - Entidades'],  
     authenticate: true,  
     responses: {  
       200: { description: 'Sucesso', schema: schemaExemplo }  
     }  
   },  
-  async ({ ids, data, manageError }: ManageRequestBody\<ExemploRequest\>): ManageRequestResponse\<ExemploResponse\> \=\> {  
-    if (\!ids.userId) return manageError({ code: 'unauthorized' })
+  async ({ ids, data, manageError }: ManageRequestBody<ExemploRequest>): ManageRequestResponse<ExemploResponse> => {  
+    if (!ids.userId) return manageError({ code: 'unauthorized' })
 
-    const entidade \= await repositorioEntidade.create(data)
+    const entidade = await repositorioEntidade.create(data)
 
-    if (\!entidade) return manageError({ code: 'conflict' })
+    if (!entidade) return manageError({ code: 'conflict' })
 
     return entidade  
   },  
   { body: schemaExemplo }  
 )
 ```
-#### **3\. Schemas Zod \+ OpenAPI (actions/entidade/schemas.ts)**
+
+#### **3\. Schemas Zod + OpenAPI (actions/entidade/schemas.ts)**
 
 Toda validação e documentação deve ser feita via Zod com o plugin @asteasolutions/zod-to-openapi.
+
 ```ts
 import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi'  
 import { z } from 'zod'
@@ -104,148 +100,106 @@ import type { FilterConfig } from '@core/factories/filters/types'
 
 extendZodWithOpenApi(z)
 
-export const entidadeFiltersConfig: FilterConfig \= {  
-  partial: \['nome', 'descricao'\],  
-  exact: \['status', 'id'\]  
+export const entidadeFiltersConfig: FilterConfig = {  
+  partial: ['nome', 'descricao'],  
+  exact: ['status', 'id']  
 }
 
-export const entidadeSchema \= z.object({  
-  id: z.string().uuid().openapi({ example: '123e4567-e89b-12d3-a456-426614174000' }),  
+export const entidadeSchema = z.object({  
+  id: z.string().openapi({ example: 'chave-unica-firebase' }),  
   nome: z.string().min(1).openapi({ example: 'Nome Exemplo' })  
 }).openapi('EntidadeResponse')
 
-export const criarEntidadeSchema \= z.object({  
+export const criarEntidadeSchema = z.object({  
   nome: z.string().min(1).openapi({ example: 'Nome Exemplo' })  
 }).openapi('CriarEntidade')
 
-export const listEntidadesQuerySchema \= z.object({  
+export const listEntidadesQuerySchema = z.object({  
   status: z.string().optional()  
 }).merge(paginationQuerySchema).merge(createFilterQuerySchema(entidadeFiltersConfig)).openapi('ListEntidadesQuery')
 
-export const listEntidadesResponseSchema \= createPaginatedSchema(entidadeSchema, 'ListEntidadesResponse')
+export const listEntidadesResponseSchema = createPaginatedSchema(entidadeSchema, 'ListEntidadesResponse')
 ```
 
 #### **4\. Tipos DTOs (actions/entidade/types.ts)**
 
 Os tipos devem ser obrigatoriamente inferidos do Zod.
+
 ```ts
 import { listEntidadesQuerySchema, listEntidadesResponseSchema, criarEntidadeSchema, entidadeSchema } from './schemas'
 
 import type { z } from 'zod'
 
-export type CriarEntidadeRequest \= { body: z.infer\<typeof criarEntidadeSchema\> }
+export type CriarEntidadeRequest = { body: z.infer<typeof criarEntidadeSchema> }
 
-export type ListEntidadesRequest \= { query: z.infer\<typeof listEntidadesQuerySchema\> }
+export type ListEntidadesRequest = { query: z.infer<typeof listEntidadesQuerySchema> }
 
-export type EntidadeResponse \= z.infer\<typeof entidadeSchema\>
+export type EntidadeResponse = z.infer<typeof entidadeSchema>
 
-export type ListEntidadesResponse \= z.infer\<typeof listEntidadesResponseSchema\>
+export type ListEntidadesResponse = z.infer<typeof listEntidadesResponseSchema>
 ```
+
 #### **5\. Repositórios (repositories/entidade/index.ts)**
+
+Centraliza as interações com o Firebase Realtime Database. Utiliza filtragem em memória para compensar limitações do RTDB em consultas complexas.
+
 ```ts
-Centraliza as consultas do Sequelize. Usa utilitários do núcleo como parseFilters.
-
+import { firebaseDb } from '@core/database/connection'
 import { entidadeFiltersConfig } from '@modules/meu-modulo/actions/entidade/schemas'  
-import { parseFilters } from '@core/factories/filters/utils'  
-import EntidadeModel from '@modules/meu-modulo/models/entidade'  
-import { Op } from 'sequelize'
+import { parseFilters, applyInMemoryFilters } from '@core/factories/filters/utils'  
+import { getPaginationOptions, buildPaginatedResponse } from '@core/factories/pagination/utils'
 
-import type { FindAllEntidadeFilters, CreateEntidadePayload } from './types'  
-import type { FindAndCountOptions, WhereOptions } from 'sequelize'  
-import type { PaginatedData } from '@core/factories/pagination/types'  
-import type { EntidadeModelType } from '@modules/meu-modulo/models/entidade'
+import type { FindAllEntidadeFilters, CreateEntidadePayload, EntidadeType } from './types'  
+import type { PaginatedResponse } from '@core/factories/pagination/types'  
 
-const entidadeRepository \= {  
-  findAll: async (filters?: FindAllEntidadeFilters): Promise\<PaginatedData\<EntidadeModelType\>\> \=\> {  
-    const dynamicWhere \= parseFilters(filters?.filters, entidadeFiltersConfig)  
-    const conditions: WhereOptions\<EntidadeModelType\>\[\] \= \[{ ...dynamicWhere }\]
+const REF_PATH = 'entidades'
 
-    const options: FindAndCountOptions\<EntidadeModelType\> \= {  
-      where: { \[Op.and\]: conditions },  
-      distinct: true  
+const entidadeRepository = {  
+  findAll: async (filters?: FindAllEntidadeFilters): Promise<PaginatedResponse<EntidadeType>> => {  
+    const snapshot = await firebaseDb.ref(REF_PATH).once('value')
+    const data = snapshot.val() as Record<string, EntidadeType> | null
+
+    const parsedFilters = parseFilters(filters?.filters, entidadeFiltersConfig)
+    const options = getPaginationOptions(filters)
+
+    let rows: EntidadeType[] = []
+
+    if (data) {
+      const arrayData = Object.entries(data).map(([id, item]) => ({ ...item, id }))
+      rows = applyInMemoryFilters(arrayData, parsedFilters, entidadeFiltersConfig)
     }
 
-    if (filters?.limit \!== undefined) options.limit \= filters.limit  
-    if (filters?.offset \!== undefined) options.offset \= filters.offset
+    const count = rows.length
+    const paginatedRows = rows.slice(options.offset, options.offset + options.limit)
 
-    const result \= await EntidadeModel.findAndCountAll(options)
-
-    return {  
-      rows: result.rows.map((item) \=\> item.toJSON() as EntidadeModelType),  
-      count: result.count  
-    }  
+    return buildPaginatedResponse({ rows: paginatedRows, count }, options.page, options.limit)
   },  
-  create: async (data: CreateEntidadePayload): Promise\<EntidadeModelType\> \=\> {  
-    const entidade \= await EntidadeModel.create(data)
+  create: async (data: CreateEntidadePayload): Promise<EntidadeType> => {  
+    const ref = firebaseDb.ref(REF_PATH).push()
+    const id = ref.key as string
 
-    return entidade.toJSON() as EntidadeModelType  
+    const payload = { ...data, id, createdAt: new Date().toISOString() }
+
+    await ref.set(payload)
+
+    return payload
   }  
 }
 
 export default entidadeRepository
 ```
+
 #### **6\. Rotas (routes/index.ts)**
 
 Apenas associa os verbos e caminhos às ações exportadas.
+
 ```ts
 import { Router } from 'express'
 
 import { criarExemplo } from '@modules/meu-modulo/actions/entidade/index'
 
-const meuModuloRouter \= Router()
+const meuModuloRouter = Router()
 
 meuModuloRouter.post('/entidades/create', criarExemplo)
 
 export default meuModuloRouter
-```
-#### **7\. Modelos Sequelize (models/entidade.ts)**
-```ts
-import { DataTypes } from 'sequelize'
-
-import { sequelize } from '@core/database/connection'
-
-import type { Optional, Model } from 'sequelize'
-
-export type EntidadeModelType \= {  
-  id: string  
-  nome: string  
-  createAt: Date  
-  lastUpdate: Date  
-}
-
-export type EntidadeCreationType \= Optional\<EntidadeModelType, 'id' | 'createAt' | 'lastUpdate'\>
-
-const EntidadeModel \= sequelize.define\<Model\<EntidadeModelType, EntidadeCreationType\>\>(  
-  'entidade',  
-  {  
-    id: {  
-      defaultValue: DataTypes.UUIDV4,  
-      type: DataTypes.UUID,  
-      primaryKey: true,  
-      allowNull: false  
-    },  
-    nome: {  
-      type: DataTypes.STRING,  
-      allowNull: false  
-    },  
-    createAt: {  
-      defaultValue: DataTypes.NOW,  
-      type: DataTypes.DATE,  
-      allowNull: false  
-    },  
-    lastUpdate: {  
-      defaultValue: DataTypes.NOW,  
-      type: DataTypes.DATE,  
-      allowNull: false  
-    }  
-  },  
-  {  
-    tableName: 'entidades',  
-    createdAt: 'createAt',  
-    updatedAt: 'lastUpdate',  
-    timestamps: true  
-  }  
-)
-
-export default EntidadeModel
-```

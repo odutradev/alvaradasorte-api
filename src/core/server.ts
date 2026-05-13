@@ -13,11 +13,11 @@ const startServer = async (): Promise<void> => {
 
   app.listen(port, async () => {
     const loadedModules = registeredModules.map((mod) => mod.name).join(', ')
-    
+
     logger.info(`Server running on port ${port}`)
     logger.info(`Registered modules: [${loadedModules}]`)
-    
-    await database.connectSequelize()
+
+    await database.connect()
 
     const startups = registeredModules.reduce<Array<Promise<void>>>((acc, mod) => {
       return mod.onStartup ? [...acc, mod.onStartup()] : acc
