@@ -10,10 +10,8 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "paths": {
-      "@shared/*": ["./src/shared/*"],
+      "@module/*": ["./src/module/*"],
       "@core/*": ["./src/core/*"],
-      "@ope/*": ["./src/modules/ope/*"],
-      "@sgp/*": ["./src/modules/sgp/*"],
       "@/*": ["./src/*"]
     }
   },

@@ -1,4 +1,4 @@
-import userRepository from '@shared/iam/repositories/user/index'
+import userRepository from '@module/repositories/user/index'
 import { firebaseAuth } from '@core/database/connection'
 import defineAction from '@core/factories/defineAction'
 import { syncUserSchema, userSchema } from './schemas'
