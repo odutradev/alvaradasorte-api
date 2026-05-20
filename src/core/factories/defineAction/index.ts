@@ -1,6 +1,4 @@
-import requirePermissions from '@shared/iam/middlewares/permissions'
 import manageRequest from '@core/middlewares/manageRequest'
-import authMiddleware from '@shared/iam/middlewares/auth'
 import { registry } from '@core/docs/registry'
 
 import type { ManageRequestSchema, ServiceFunction, RouteSchema } from '@core/middlewares/manageRequest/types'
@@ -50,9 +48,6 @@ const defineAction = <T extends ManageRequestSchema = any>(metadata: ActionMetad
   const handler = manageRequest(service, schema)
   const middlewares: RequestHandler[] = []
 
-  if (metadata.authenticate) middlewares.push(authMiddleware)
-  if (metadata.permissions?.length) middlewares.push(requirePermissions(metadata.permissions))
-  
   middlewares.push(handler)
 
   return middlewares.length === 1 ? middlewares[0] : middlewares

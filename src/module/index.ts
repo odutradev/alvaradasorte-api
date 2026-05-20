@@ -5,7 +5,7 @@ import type { AppModule } from '@core/types/module'
 const defaultModule: AppModule = {
   name: 'defaultModule',
   router: defaultModuleRouter,
-  routePrefix: '/'
+  routePrefix: '/iam/v1'
 }
 
 export default defaultModule
