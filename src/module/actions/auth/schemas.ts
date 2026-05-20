@@ -20,3 +20,13 @@ export const syncUserSchema = z.object({
   photoUrl: z.string().optional().openapi({ example: 'https://example.com/photo.jpg' }),
   authProviderId: z.string().optional().openapi({ example: 'google.com' })
 }).openapi('SyncUserRequest')
+
+export const updateUserSchema = z.object({
+  name: z.string().min(1).optional().openapi({ example: 'John Doe' }),
+  photoUrl: z.string().optional().openapi({ example: 'https://example.com/photo.jpg' })
+}).openapi('UpdateUserRequest')
+
+export const syncResponseSchema = z.object({
+  token: z.string().openapi({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' }),
+  user: userSchema
+}).openapi('SyncResponse')

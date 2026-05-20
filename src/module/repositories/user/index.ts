@@ -1,6 +1,6 @@
 import { firebaseDb } from '@core/database/connection'
 
-import type { CreateUserPayload, UserType } from './types'
+import type { CreateUserPayload, UpdateUserPayload, UserType } from './types'
 
 const REF_PATH = 'users'
 
@@ -25,6 +25,19 @@ const userRepository = {
     await ref.set(payload)
     
     return payload as UserType
+  },
+  update: async (id: string, data: UpdateUserPayload): Promise<UserType | null> => {
+    const ref = firebaseDb.ref(`${REF_PATH}/${id}`)
+    const snapshot = await ref.once('value')
+
+    if (!snapshot.exists()) return null
+
+    const now = new Date().toISOString()
+    const updates = { ...data, updatedAt: now }
+
+    await ref.update(updates)
+
+    return { ...snapshot.val(), ...updates } as UserType
   }
 }
 

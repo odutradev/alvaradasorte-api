@@ -1,3 +1,5 @@
+import jwt from 'jsonwebtoken'
+
 import { firebaseAuth } from '@core/database/connection'
 import sendError from '@core/error/index'
 
@@ -13,15 +15,24 @@ const authMiddleware = async (req: Request, res: Response, next: NextFunction): 
   }
 
   const token = authHeader.split('Bearer ')[1]
+  const secret = process.env.JWT_SECRET ?? 'default-secret-key'
 
   try {
-    const decodedToken = await firebaseAuth.verifyIdToken(token)
+    const decoded = jwt.verify(token, secret) as { sub: string }
     
-    res.locals.userId = decodedToken.uid
+    res.locals.userId = decoded.sub
     
     next()
-  } catch (error) {
-    sendError({ code: 'token_is_not_valid', res, error, local: 'authMiddleware' })
+  } catch {
+    try {
+      const decodedToken = await firebaseAuth.verifyIdToken(token)
+      
+      res.locals.userId = decodedToken.uid
+      
+      next()
+    } catch (error) {
+      sendError({ code: 'token_is_not_valid', res, error, local: 'authMiddleware' })
+    }
   }
 }
 

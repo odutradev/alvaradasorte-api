@@ -3,6 +3,7 @@ declare namespace NodeJS {
     NODE_ENV: 'development' | 'production'
     PORT?: string
     CORS_ORIGIN?: string
+    JWT_SECRET: string
     FIREBASE_MESSAGING_SENDER_ID: string
     FIREBASE_STORAGE_BUCKET: string
     FIREBASE_AUTH_DOMAIN: string

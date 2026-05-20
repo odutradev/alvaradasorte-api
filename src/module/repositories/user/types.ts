@@ -9,3 +9,5 @@ export type UserType = {
 }
 
 export type CreateUserPayload = Omit<UserType, 'id' | 'createdAt' | 'updatedAt'>
+
+export type UpdateUserPayload = Partial<Omit<UserType, 'id' | 'createdAt' | 'updatedAt'>>
