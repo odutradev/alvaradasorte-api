@@ -1,3 +1,5 @@
+import 'dotenv/config'
+
 import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs'
 import { resolve } from 'path'
 import express from 'express'
