@@ -8,7 +8,7 @@ export const participationSchema = z.object({
   sweepstakeId: z.string().openapi({ example: 'bolao-id' }),
   userId: z.string().openapi({ example: 'user-uid' }),
   userName: z.string().openapi({ example: 'John Doe' }),
-  receiptUrl: z.string().openapi({ example: 'https://link.com/comprovante.jpg' }),
+  receiptUrl: z.string().openapi({ example: 'receipts/bolao-id/user-uid-123456789.png' }),
   createdAt: z.string().openapi({ example: '2023-01-01T00:00:00.000Z' })
 }).openapi('ParticipationResponse')
 
@@ -39,10 +39,6 @@ export const createSweepstakeSchema = z.object({
   purchaseLimitDate: z.string().datetime().openapi({ example: '2023-12-19T23:59:59.000Z' }),
   presetId: z.string().min(1).openapi({ example: 'preset-id' })
 }).openapi('CreateSweepstakeRequest')
-
-export const joinSweepstakeSchema = z.object({
-  receiptUrl: z.string().url().openapi({ example: 'https://link.com/comprovante.jpg' })
-}).openapi('JoinSweepstakeRequest')
 
 export const listSweepstakesResponseSchema = z.array(sweepstakeSchema).openapi('ListSweepstakesResponse')
 

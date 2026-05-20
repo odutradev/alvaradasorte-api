@@ -1,4 +1,4 @@
-import { listSweepstakesResponseSchema, sweepstakeDetailsSchema, createSweepstakeSchema, joinSweepstakeSchema, sweepstakeParamsSchema, participationSchema, sweepstakeSchema } from './schemas'
+import { listSweepstakesResponseSchema, sweepstakeDetailsSchema, createSweepstakeSchema, sweepstakeParamsSchema, participationSchema, sweepstakeSchema } from './schemas'
 
 import type { z } from 'zod'
 
@@ -6,11 +6,11 @@ export type CreateSweepstakeRequest = { body: z.infer<typeof createSweepstakeSch
 
 export type SweepstakeDetailsResponse = z.infer<typeof sweepstakeDetailsSchema>
 
-export type JoinSweepstakeRequest = { body: z.infer<typeof joinSweepstakeSchema>; params: z.infer<typeof sweepstakeParamsSchema> }
-
 export type ListSweepstakesResponse = z.infer<typeof listSweepstakesResponseSchema>
 
 export type SweepstakeParamsRequest = { params: z.infer<typeof sweepstakeParamsSchema> }
+
+export type JoinSweepstakeRequest = { params: z.infer<typeof sweepstakeParamsSchema> }
 
 export type ParticipationResponse = z.infer<typeof participationSchema>
 

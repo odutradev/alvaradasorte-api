@@ -2,12 +2,21 @@ import type { ResponseErrorsParams } from '@core/error/types'
 import type { Request, Response } from 'express'
 import type { z } from 'zod'
 
-export type ManageRequestResponse<T = any> = Promise<T | void | 'error'>
+export type FileData = {
+  fieldname: string
+  originalname: string
+  encoding: string
+  mimetype: string
+  size: number
+  buffer: Buffer
+}
+
+export type ManageRequestResponse<T = unknown> = Promise<T | void | 'error'>
 
 export type ManageRequestSchema = {
-  params?: any
-  query?: any
-  body?: any
+  params?: unknown
+  query?: unknown
+  body?: unknown
 }
 
 export type ManageErrorParams = {
@@ -31,15 +40,16 @@ export type RouteSchema = {
   body?: z.AnyZodObject
 }
 
-export type ManageRequestBody<T extends ManageRequestSchema = any> = {
+export type ManageRequestBody<T extends ManageRequestSchema = unknown> = {
   manageError: (data: ManageErrorParams) => void
   defaultExpress: DefaultExpressContext
   ids: RequestIdentifiers
   params: T['params']
   query: T['query']
   data: T['body']
+  file?: FileData
 }
 
-export type ServiceFunction<T extends ManageRequestSchema = any> = (
+export type ServiceFunction<T extends ManageRequestSchema = unknown> = (
   requestBody: ManageRequestBody<T>
-) => ManageRequestResponse | any
+) => ManageRequestResponse | unknown

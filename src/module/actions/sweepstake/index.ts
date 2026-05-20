@@ -1,12 +1,14 @@
+import { listSweepstakesResponseSchema, sweepstakeDetailsSchema, createSweepstakeSchema, sweepstakeParamsSchema, sweepstakeSchema } from './schemas'
 import participationRepository from '@module/repositories/participation/index'
 import sweepstakeRepository from '@module/repositories/sweepstake/index'
 import userRepository from '@module/repositories/user/index'
+import { firebaseStorage } from '@core/database/connection'
 import defineAction from '@core/factories/defineAction'
+import upload from '@core/middlewares/upload'
 import { isPast } from '@core/utils/date'
-import { listSweepstakesResponseSchema, sweepstakeDetailsSchema, createSweepstakeSchema, joinSweepstakeSchema, sweepstakeParamsSchema, sweepstakeSchema } from './schemas'
 
-import type { ManageRequestResponse, ManageRequestBody } from '@core/middlewares/manageRequest/types'
 import type { SweepstakeDetailsResponse, CreateSweepstakeRequest, ListSweepstakesResponse, JoinSweepstakeRequest, SweepstakeParamsRequest, SweepstakeResponse } from './types'
+import type { ManageRequestResponse, ManageRequestBody } from '@core/middlewares/manageRequest/types'
 
 export const listSweepstakes = defineAction(
   {
@@ -91,12 +93,24 @@ export const joinSweepstake = defineAction(
     summary: 'Entrar em um bolão',
     tags: ['IAM - Bolões'],
     authenticate: true,
+    middlewares: [upload.single('receipt')],
+    requestBody: {
+      content: {
+        'multipart/form-data': {
+          schema: {
+            type: 'object',
+            properties: { receipt: { type: 'string', format: 'binary' } }
+          }
+        }
+      }
+    },
     responses: {
       204: { description: 'Sucesso' }
     }
   },
-  async ({ ids, params, data, manageError }: ManageRequestBody<JoinSweepstakeRequest>): ManageRequestResponse => {
+  async ({ ids, params, file, manageError }: ManageRequestBody<JoinSweepstakeRequest>): ManageRequestResponse => {
     if (!ids.userId) return manageError({ code: 'unauthorized' })
+    if (!file) return manageError({ code: 'bad_request', details: 'Comprovante não enviado' })
 
     try {
       const [user, sweepstake, existing] = await Promise.all([
@@ -122,11 +136,18 @@ export const joinSweepstake = defineAction(
 
       if (noQuotas) return manageError({ code: 'bad_request', details: 'Cotas esgotadas' })
 
+      const bucket = firebaseStorage.bucket()
+      const fileExtension = file.originalname.split('.').pop()
+      const filePath = `receipts/${params.id}/${ids.userId}-${Date.now()}.${fileExtension}`
+      const fileRef = bucket.file(filePath)
+
+      await fileRef.save(file.buffer, { metadata: { contentType: file.mimetype } })
+
       const payload = {
         sweepstakeId: params.id,
         userId: user.id,
         userName: user.fullName as string,
-        receiptUrl: data.receiptUrl
+        receiptUrl: filePath
       }
 
       await participationRepository.create(payload)
@@ -134,5 +155,5 @@ export const joinSweepstake = defineAction(
       return manageError({ code: 'internal_error', error })
     }
   },
-  { body: joinSweepstakeSchema, params: sweepstakeParamsSchema }
+  { params: sweepstakeParamsSchema }
 )

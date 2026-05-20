@@ -1,6 +1,8 @@
+import type { RequestHandler } from 'express'
+
 export type ResponseConfig = {
   description: string
-  schema?: any
+  schema?: unknown
 }
 
 export type ActionMetadata = {
@@ -12,4 +14,6 @@ export type ActionMetadata = {
   tags: string[]
   security?: Array<Record<string, string[]>>
   responses?: Record<string, ResponseConfig>
+  middlewares?: RequestHandler[]
+  requestBody?: unknown
 }

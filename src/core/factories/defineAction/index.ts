@@ -5,7 +5,7 @@ import type { ManageRequestSchema, ServiceFunction, RouteSchema } from '@core/mi
 import type { ActionMetadata, ResponseConfig } from './types'
 import type { RequestHandler } from 'express'
 
-const defineAction = <T extends ManageRequestSchema = any>(metadata: ActionMetadata, service: ServiceFunction<T>, schema?: RouteSchema): RequestHandler | RequestHandler[] => {
+const defineAction = <T extends ManageRequestSchema = unknown>(metadata: ActionMetadata, service: ServiceFunction<T>, schema?: RouteSchema): RequestHandler | RequestHandler[] => {
   const defaultResponses: Record<string, ResponseConfig> = {
     200: { description: 'Sucesso' },
     400: { description: 'Requisição inválida' },
@@ -18,7 +18,7 @@ const defineAction = <T extends ManageRequestSchema = any>(metadata: ActionMetad
   }
 
   const mergedResponses = { ...defaultResponses, ...metadata.responses }
-  const responses: Record<string, any> = {}
+  const responses: Record<string, unknown> = {}
 
   Object.entries(mergedResponses).forEach(([code, value]) => {
     responses[code] = {
@@ -28,11 +28,12 @@ const defineAction = <T extends ManageRequestSchema = any>(metadata: ActionMetad
   })
 
   const security = metadata.security ?? (metadata.authenticate ? [{ bearerAuth: [] }] : undefined)
+  const requestBody = metadata.requestBody ?? (schema?.body ? { content: { 'application/json': { schema: schema.body } } } : undefined)
 
   const request = {
     params: schema?.params,
     query: schema?.query,
-    body: schema?.body ? { content: { 'application/json': { schema: schema.body } } } : undefined
+    body: requestBody
   }
 
   registry.registerPath({
@@ -47,6 +48,8 @@ const defineAction = <T extends ManageRequestSchema = any>(metadata: ActionMetad
 
   const handler = manageRequest(service, schema)
   const middlewares: RequestHandler[] = []
+
+  if (metadata.middlewares) middlewares.push(...metadata.middlewares)
 
   middlewares.push(handler)
 

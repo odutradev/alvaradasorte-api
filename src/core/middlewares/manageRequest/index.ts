@@ -2,7 +2,7 @@ import createLogger from '@core/utils/logger'
 import { appConfig } from '@core/config/app'
 import sendError from '@core/error'
 
-import type { ManageRequestBody, ManageErrorParams, ServiceFunction, RouteSchema, ManageRequestSchema } from '@core/middlewares/manageRequest/types'
+import type { ManageRequestBody, ManageErrorParams, ServiceFunction, RouteSchema, ManageRequestSchema, FileData } from '@core/middlewares/manageRequest/types'
 import type { RequestHandler, Response, Request } from 'express'
 import type { z } from 'zod'
 
@@ -15,7 +15,7 @@ const formatZodError = (error: z.ZodError) => {
   }))
 }
 
-const manageRequest = <T extends ManageRequestSchema = any>(
+const manageRequest = <T extends ManageRequestSchema = unknown>(
   service: ServiceFunction<T>,
   schema?: RouteSchema
 ): RequestHandler => {
@@ -45,7 +45,7 @@ const manageRequest = <T extends ManageRequestSchema = any>(
 
           if (!result.success) return manageError({ code: 'validation_error', error: result.error, details: formatZodError(result.error) })
 
-          req.query = result.data as any
+          req.query = result.data as unknown
         }
 
         if (schema.body) {
@@ -63,6 +63,7 @@ const manageRequest = <T extends ManageRequestSchema = any>(
         params: req.params as T['params'],
         query: req.query as T['query'],
         data: req.body as T['body'],
+        file: req.file as FileData | undefined,
         manageError
       }
 
