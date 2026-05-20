@@ -14,8 +14,9 @@ export const userSchema = z.object({
 }).openapi('UserResponse')
 
 export const syncUserSchema = z.object({
-  name: z.string().min(1).optional().openapi({ example: 'John Doe' }),
-  email: z.string().email().optional().openapi({ example: 'john@example.com' }),
+  id: z.string().min(1).openapi({ example: 'firebase-uid' }),
+  name: z.string().min(1).openapi({ example: 'John Doe' }),
+  email: z.string().email().openapi({ example: 'john@example.com' }),
   photoUrl: z.string().optional().openapi({ example: 'https://example.com/photo.jpg' }),
   authProviderId: z.string().optional().openapi({ example: 'google.com' })
 }).openapi('SyncUserRequest')

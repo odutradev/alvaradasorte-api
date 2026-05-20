@@ -1,5 +1,4 @@
 import userRepository from '@module/repositories/user/index'
-import { firebaseAuth } from '@core/database/connection'
 import defineAction from '@core/factories/defineAction'
 import { syncUserSchema, userSchema } from './schemas'
 
@@ -10,27 +9,23 @@ export const syncAuthUser = defineAction(
   {
     method: 'post',
     path: '/iam/v1/auth/sync',
-    summary: 'Sincronizar usuário do Firebase Auth',
+    summary: 'Sincronizar usuário logado via Frontend',
     tags: ['IAM - Autenticação'],
-    authenticate: true,
+    authenticate: false,
     responses: {
       200: { description: 'Sucesso', schema: userSchema }
     }
   },
-  async ({ ids, data, manageError }: ManageRequestBody<SyncUserRequest>): ManageRequestResponse<UserResponse> => {
-    if (!ids.userId) return manageError({ code: 'unauthorized' })
-
+  async ({ data, manageError }: ManageRequestBody<SyncUserRequest>): ManageRequestResponse<UserResponse> => {
     try {
-      const firebaseUser = await firebaseAuth.getUser(ids.userId)
-      
       const payload = {
-        name: data.name ?? firebaseUser.displayName ?? '',
-        email: data.email ?? firebaseUser.email ?? '',
-        photoUrl: data.photoUrl ?? firebaseUser.photoURL ?? '',
-        authProviderId: data.authProviderId ?? firebaseUser.providerData[0]?.providerId ?? 'password'
+        name: data.name,
+        email: data.email,
+        photoUrl: data.photoUrl ?? '',
+        authProviderId: data.authProviderId ?? 'google'
       }
-      
-      const user = await userRepository.upsert(ids.userId, payload)
+
+      const user = await userRepository.upsert(data.id, payload)
 
       return user
     } catch (error) {
