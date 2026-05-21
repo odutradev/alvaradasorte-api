@@ -106,7 +106,22 @@ export const getSweepstakeDetails = defineAction(
 
       if (!sweepstake) return manageError({ code: 'not_found' })
 
-      return { ...sweepstake, participations }
+      const bucket = firebaseStorage.bucket()
+      const participationsWithSignedUrls = await Promise.all(
+        participations.map(async (p) => {
+          try {
+            const [signedUrl] = await bucket.file(p.receiptUrl).getSignedUrl({
+              action: 'read',
+              expires: Date.now() + 15 * 60 * 1000
+            })
+            return { ...p, receiptUrl: signedUrl }
+          } catch {
+            return p
+          }
+        })
+      )
+
+      return { ...sweepstake, participations: participationsWithSignedUrls }
     } catch (error) {
       return manageError({ code: 'internal_error', error })
     }

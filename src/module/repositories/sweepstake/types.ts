@@ -2,6 +2,7 @@ export type SweepstakeType = {
   id: string
   adminId: string
   title: string
+  description: string
   quotaPrice: number
   prizeValue: number
   availableQuotas: number

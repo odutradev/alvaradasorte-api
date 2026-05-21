@@ -1,7 +1,6 @@
 export type PresetType = {
   id: string
   adminId: string
-  description: string
   pix: string
   receiverName: string
   bank: string

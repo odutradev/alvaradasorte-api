@@ -16,6 +16,7 @@ export const sweepstakeSchema = z.object({
   id: z.string().openapi({ example: 'chave-unica' }),
   adminId: z.string().openapi({ example: 'admin-uid' }),
   title: z.string().openapi({ example: 'Bolão da Copa' }),
+  description: z.string().openapi({ example: 'Participe do bolão oficial!' }),
   quotaPrice: z.number().openapi({ example: 50.0 }),
   prizeValue: z.number().openapi({ example: 1000.0 }),
   availableQuotas: z.number().openapi({ example: 20 }),
@@ -42,6 +43,7 @@ export const sweepstakeListItemSchema = sweepstakeSchema.extend({
 
 export const createSweepstakeSchema = z.object({
   title: z.string().min(1).openapi({ example: 'Bolão da Copa' }),
+  description: z.string().min(1).openapi({ example: 'Participe do bolão oficial!' }),
   quotaPrice: z.number().min(0.01).openapi({ example: 50.0 }),
   prizeValue: z.number().min(0.01).openapi({ example: 1000.0 }),
   availableQuotas: z.number().min(1).openapi({ example: 20 }),
