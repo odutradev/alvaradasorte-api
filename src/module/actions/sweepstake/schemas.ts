@@ -30,6 +30,16 @@ export const sweepstakeDetailsSchema = sweepstakeSchema.extend({
   participations: z.array(participationSchema)
 }).openapi('SweepstakeDetailsResponse')
 
+export const sweepstakeListItemSchema = sweepstakeSchema.extend({
+  metadata: z.object({
+    filledQuotas: z.number().openapi({ example: 5 })
+  }),
+  userParticipation: z.object({
+    isParticipant: z.boolean().openapi({ example: true }),
+    joinedAt: z.string().nullable().openapi({ example: '2023-01-01T00:00:00.000Z' })
+  }).optional()
+}).openapi('SweepstakeListItemResponse')
+
 export const createSweepstakeSchema = z.object({
   title: z.string().min(1).openapi({ example: 'Bolão da Copa' }),
   quotaPrice: z.number().min(0.01).openapi({ example: 50.0 }),
@@ -40,7 +50,11 @@ export const createSweepstakeSchema = z.object({
   presetId: z.string().min(1).openapi({ example: 'preset-id' })
 }).openapi('CreateSweepstakeRequest')
 
-export const listSweepstakesResponseSchema = z.array(sweepstakeSchema).openapi('ListSweepstakesResponse')
+export const listSweepstakesResponseSchema = z.array(sweepstakeListItemSchema).openapi('ListSweepstakesResponse')
+
+export const listSweepstakesQuerySchema = z.object({
+  userId: z.string().optional().openapi({ example: 'user-uid' })
+}).openapi('ListSweepstakesQuery')
 
 export const sweepstakeParamsSchema = z.object({
   id: z.string().openapi({ example: 'chave-unica' })

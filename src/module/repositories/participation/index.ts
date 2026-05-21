@@ -5,6 +5,14 @@ import type { CreateParticipationPayload, ParticipationType } from './types'
 const REF_PATH = 'participations'
 
 const participationRepository = {
+  findAll: async (): Promise<ParticipationType[]> => {
+    const snapshot = await firebaseDb.ref(REF_PATH).once('value')
+    const data = snapshot.val() as Record<string, ParticipationType> | null
+
+    if (!data) return []
+
+    return Object.entries(data).map(([id, item]) => ({ ...item, id }))
+  },
   findBySweepstakeId: async (sweepstakeId: string): Promise<ParticipationType[]> => {
     const snapshot = await firebaseDb.ref(REF_PATH).orderByChild('sweepstakeId').equalTo(sweepstakeId).once('value')
     const data = snapshot.val() as Record<string, ParticipationType> | null

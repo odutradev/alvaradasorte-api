@@ -1,4 +1,4 @@
-import { listSweepstakesResponseSchema, sweepstakeDetailsSchema, createSweepstakeSchema, sweepstakeParamsSchema, sweepstakeSchema } from './schemas'
+import { listSweepstakesResponseSchema, listSweepstakesQuerySchema, sweepstakeDetailsSchema, createSweepstakeSchema, sweepstakeParamsSchema, sweepstakeSchema } from './schemas'
 import participationRepository from '@module/repositories/participation/index'
 import sweepstakeRepository from '@module/repositories/sweepstake/index'
 import userRepository from '@module/repositories/user/index'
@@ -7,7 +7,7 @@ import defineAction from '@core/factories/defineAction'
 import upload from '@core/middlewares/upload'
 import { isPast } from '@core/utils/date'
 
-import type { SweepstakeDetailsResponse, CreateSweepstakeRequest, ListSweepstakesResponse, JoinSweepstakeRequest, SweepstakeParamsRequest, SweepstakeResponse } from './types'
+import type { SweepstakeDetailsResponse, CreateSweepstakeRequest, ListSweepstakesResponse, ListSweepstakesRequest, JoinSweepstakeRequest, SweepstakeParamsRequest, SweepstakeResponse } from './types'
 import type { ManageRequestResponse, ManageRequestBody } from '@core/middlewares/manageRequest/types'
 
 export const listSweepstakes = defineAction(
@@ -21,15 +21,43 @@ export const listSweepstakes = defineAction(
       200: { description: 'Sucesso', schema: listSweepstakesResponseSchema }
     }
   },
-  async ({ manageError }: ManageRequestBody): ManageRequestResponse<ListSweepstakesResponse> => {
+  async ({ ids, query, manageError }: ManageRequestBody<ListSweepstakesRequest>): ManageRequestResponse<ListSweepstakesResponse> => {
     try {
-      const sweepstakes = await sweepstakeRepository.findAll()
+      const [sweepstakes, participations] = await Promise.all([
+        sweepstakeRepository.findAll(),
+        participationRepository.findAll()
+      ])
 
-      return sweepstakes
+      const targetUserId = query?.userId ?? ids.userId
+
+      const mappedSweepstakes = sweepstakes.map((sweepstake) => {
+        const sweepstakeParticipations = participations.filter((p) => p.sweepstakeId === sweepstake.id)
+        const filledQuotas = sweepstakeParticipations.length
+
+        const userParticipationRecord = sweepstakeParticipations.find((p) => p.userId === targetUserId)
+
+        const userParticipation = targetUserId
+          ? {
+              isParticipant: !!userParticipationRecord,
+              joinedAt: userParticipationRecord?.createdAt ?? null
+            }
+          : undefined
+
+        return {
+          ...sweepstake,
+          metadata: {
+            filledQuotas
+          },
+          ...(userParticipation && { userParticipation })
+        }
+      })
+
+      return mappedSweepstakes
     } catch (error) {
       return manageError({ code: 'internal_error', error })
     }
-  }
+  },
+  { query: listSweepstakesQuerySchema }
 )
 
 export const createSweepstake = defineAction(
@@ -122,11 +150,11 @@ export const joinSweepstake = defineAction(
       if (!user) return manageError({ code: 'user_not_found' })
       if (!sweepstake) return manageError({ code: 'not_found' })
       if (existing) return manageError({ code: 'conflict', details: 'Usuário já participa deste bolão' })
-      
+
       const missingProfileInfo = !user.fullName || !user.department || !user.phone
 
       if (missingProfileInfo) return manageError({ code: 'bad_request', details: 'Perfil incompleto. Preencha nome completo, setor e telefone.' })
-      
+
       const isClosed = isPast(new Date(sweepstake.purchaseLimitDate))
 
       if (isClosed) return manageError({ code: 'bad_request', details: 'Data limite para compra excedida' })
