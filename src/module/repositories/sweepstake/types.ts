@@ -9,8 +9,12 @@ export type SweepstakeType = {
   drawDate: string
   purchaseLimitDate: string
   presetId: string
+  games?: number[][]
+  result?: number[]
   createdAt: string
   updatedAt: string
 }
 
 export type CreateSweepstakePayload = Omit<SweepstakeType, 'id' | 'createdAt' | 'updatedAt'>
+
+export type UpdateSweepstakePayload = Partial<Omit<SweepstakeType, 'id' | 'createdAt' | 'updatedAt' | 'adminId'>>

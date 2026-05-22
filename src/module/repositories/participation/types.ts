@@ -3,6 +3,8 @@ export type ParticipationType = {
   sweepstakeId: string
   userId: string
   userName: string
+  userPhone: string
+  userDepartment: string
   receiptUrl: string
   createdAt: string
 }

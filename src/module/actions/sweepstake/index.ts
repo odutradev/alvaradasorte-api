@@ -1,4 +1,4 @@
-import { listSweepstakesResponseSchema, listSweepstakesQuerySchema, sweepstakeDetailsSchema, createSweepstakeSchema, sweepstakeParamsSchema, sweepstakeSchema } from './schemas'
+import { listSweepstakesResponseSchema, listSweepstakesQuerySchema, sweepstakeDetailsSchema, addSweepstakeGamesSchema, setSweepstakeResultSchema, createSweepstakeSchema, sweepstakeParamsSchema, sweepstakeSchema } from './schemas'
 import participationRepository from '@module/repositories/participation/index'
 import sweepstakeRepository from '@module/repositories/sweepstake/index'
 import userRepository from '@module/repositories/user/index'
@@ -7,7 +7,7 @@ import defineAction from '@core/factories/defineAction'
 import upload from '@core/middlewares/upload'
 import { isPast } from '@core/utils/date'
 
-import type { SweepstakeDetailsResponse, CreateSweepstakeRequest, ListSweepstakesResponse, ListSweepstakesRequest, JoinSweepstakeRequest, SweepstakeParamsRequest, SweepstakeResponse } from './types'
+import type { SweepstakeDetailsResponse, AddSweepstakeGamesRequest, SetSweepstakeResultRequest, CreateSweepstakeRequest, ListSweepstakesResponse, ListSweepstakesRequest, JoinSweepstakeRequest, SweepstakeParamsRequest, SweepstakeResponse } from './types'
 import type { ManageRequestResponse, ManageRequestBody } from '@core/middlewares/manageRequest/types'
 
 export const listSweepstakes = defineAction(
@@ -190,6 +190,8 @@ export const joinSweepstake = defineAction(
         sweepstakeId: params.id,
         userId: user.id,
         userName: user.fullName as string,
+        userPhone: user.phone as string,
+        userDepartment: user.department as string,
         receiptUrl: filePath
       }
 
@@ -199,4 +201,58 @@ export const joinSweepstake = defineAction(
     }
   },
   { params: sweepstakeParamsSchema }
+)
+
+export const addSweepstakeGames = defineAction(
+  {
+    method: 'patch',
+    path: '/iam/v1/sweepstakes/{id}/games',
+    summary: 'Definir jogos do bolão (Admin)',
+    tags: ['IAM - Bolões'],
+    authenticate: true,
+    responses: {
+      200: { description: 'Sucesso', schema: sweepstakeSchema }
+    }
+  },
+  async ({ params, data, manageError }: ManageRequestBody<AddSweepstakeGamesRequest>): ManageRequestResponse<SweepstakeResponse> => {
+    try {
+      const sweepstake = await sweepstakeRepository.findById(params.id)
+
+      if (!sweepstake) return manageError({ code: 'not_found' })
+
+      const updated = await sweepstakeRepository.update(params.id, { games: data.games })
+
+      return updated!
+    } catch (error) {
+      return manageError({ code: 'internal_error', error })
+    }
+  },
+  { params: sweepstakeParamsSchema, body: addSweepstakeGamesSchema }
+)
+
+export const setSweepstakeResult = defineAction(
+  {
+    method: 'patch',
+    path: '/iam/v1/sweepstakes/{id}/result',
+    summary: 'Definir resultado do bolão (Admin)',
+    tags: ['IAM - Bolões'],
+    authenticate: true,
+    responses: {
+      200: { description: 'Sucesso', schema: sweepstakeSchema }
+    }
+  },
+  async ({ params, data, manageError }: ManageRequestBody<SetSweepstakeResultRequest>): ManageRequestResponse<SweepstakeResponse> => {
+    try {
+      const sweepstake = await sweepstakeRepository.findById(params.id)
+
+      if (!sweepstake) return manageError({ code: 'not_found' })
+
+      const updated = await sweepstakeRepository.update(params.id, { result: data.result })
+
+      return updated!
+    } catch (error) {
+      return manageError({ code: 'internal_error', error })
+    }
+  },
+  { params: sweepstakeParamsSchema, body: setSweepstakeResultSchema }
 )

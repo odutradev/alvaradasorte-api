@@ -1,6 +1,6 @@
 import { firebaseDb } from '@core/database/connection'
 
-import type { CreateSweepstakePayload, SweepstakeType } from './types'
+import type { CreateSweepstakePayload, UpdateSweepstakePayload, SweepstakeType } from './types'
 
 const REF_PATH = 'sweepstakes'
 
@@ -29,6 +29,19 @@ const sweepstakeRepository = {
     await ref.set(payload)
 
     return payload
+  },
+  update: async (id: string, data: UpdateSweepstakePayload): Promise<SweepstakeType | null> => {
+    const ref = firebaseDb.ref(`${REF_PATH}/${id}`)
+    const snapshot = await ref.once('value')
+
+    if (!snapshot.exists()) return null
+
+    const now = new Date().toISOString()
+    const merged = { ...snapshot.val(), ...data, updatedAt: now }
+
+    await ref.set(merged)
+
+    return merged as SweepstakeType
   }
 }
 
