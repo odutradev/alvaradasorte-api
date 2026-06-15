@@ -56,6 +56,17 @@ export const createSweepstakeSchema = z.object({
   presetId: z.string().min(1).openapi({ example: 'preset-id' })
 }).openapi('CreateSweepstakeRequest')
 
+export const updateSweepstakeSchema = z.object({
+  title: z.string().min(1).optional().openapi({ example: 'Bolão da Copa Atualizado' }),
+  description: z.string().min(1).optional().openapi({ example: 'Nova descrição' }),
+  quotaPrice: z.number().min(0.01).optional().openapi({ example: 60.0 }),
+  prizeValue: z.number().min(0.01).optional().openapi({ example: 1200.0 }),
+  availableQuotas: z.number().min(1).optional().openapi({ example: 30 }),
+  drawDate: z.string().datetime().optional().openapi({ example: '2023-12-25T20:00:00.000Z' }),
+  purchaseLimitDate: z.string().datetime().optional().openapi({ example: '2023-12-24T23:59:59.000Z' }),
+  presetId: z.string().min(1).optional().openapi({ example: 'new-preset-id' })
+}).openapi('UpdateSweepstakeRequest')
+
 export const addSweepstakeGamesSchema = z.object({
   games: z.array(z.array(z.number().int().min(1)).min(1)).min(1).openapi({ example: [[1, 2, 3, 4], [5, 6, 7, 8]] })
 }).openapi('AddSweepstakeGamesRequest')

@@ -1,6 +1,6 @@
 import { Router } from 'express'
 
-import { setSweepstakeResult, addSweepstakeGames, getSweepstakeDetails, createSweepstake, listSweepstakes, joinSweepstake } from '@module/actions/sweepstake/index'
+import { getSweepstakeDetails, addSweepstakeGames, setSweepstakeResult, updateSweepstake, deleteSweepstake, createSweepstake, listSweepstakes, joinSweepstake } from '@module/actions/sweepstake/index'
 import { updatePreset, createPreset, deletePreset, listPresets } from '@module/actions/preset/index'
 import { syncAuthUser, updateMe, getMe } from '@module/actions/auth/index'
 import adminMiddleware from '@module/middlewares/admin'
@@ -23,5 +23,7 @@ defaultModuleRouter.get('/sweepstakes/:id/details', authMiddleware, adminMiddlew
 defaultModuleRouter.post('/sweepstakes/:id/join', authMiddleware, joinSweepstake)
 defaultModuleRouter.patch('/sweepstakes/:id/games', authMiddleware, adminMiddleware, addSweepstakeGames)
 defaultModuleRouter.patch('/sweepstakes/:id/result', authMiddleware, adminMiddleware, setSweepstakeResult)
+defaultModuleRouter.patch('/sweepstakes/:id', authMiddleware, adminMiddleware, updateSweepstake)
+defaultModuleRouter.delete('/sweepstakes/:id', authMiddleware, adminMiddleware, deleteSweepstake)
 
 export default defaultModuleRouter

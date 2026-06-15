@@ -1,4 +1,4 @@
-import { listSweepstakesResponseSchema, listSweepstakesQuerySchema, sweepstakeDetailsSchema, addSweepstakeGamesSchema, setSweepstakeResultSchema, createSweepstakeSchema, sweepstakeParamsSchema, sweepstakeSchema } from './schemas'
+import { listSweepstakesResponseSchema, listSweepstakesQuerySchema, setSweepstakeResultSchema, addSweepstakeGamesSchema, sweepstakeDetailsSchema, updateSweepstakeSchema, createSweepstakeSchema, sweepstakeParamsSchema, sweepstakeSchema } from './schemas'
 import participationRepository from '@module/repositories/participation/index'
 import sweepstakeRepository from '@module/repositories/sweepstake/index'
 import userRepository from '@module/repositories/user/index'
@@ -7,7 +7,7 @@ import defineAction from '@core/factories/defineAction'
 import upload from '@core/middlewares/upload'
 import { isPast } from '@core/utils/date'
 
-import type { SweepstakeDetailsResponse, AddSweepstakeGamesRequest, SetSweepstakeResultRequest, CreateSweepstakeRequest, ListSweepstakesResponse, ListSweepstakesRequest, JoinSweepstakeRequest, SweepstakeParamsRequest, SweepstakeResponse } from './types'
+import type { SetSweepstakeResultRequest, AddSweepstakeGamesRequest, SweepstakeDetailsResponse, DeleteSweepstakeRequest, UpdateSweepstakeRequest, CreateSweepstakeRequest, SweepstakeParamsRequest, ListSweepstakesResponse, ListSweepstakesRequest, JoinSweepstakeRequest, SweepstakeResponse } from './types'
 import type { ManageRequestResponse, ManageRequestBody } from '@core/middlewares/manageRequest/types'
 
 export const listSweepstakes = defineAction(
@@ -84,6 +84,54 @@ export const createSweepstake = defineAction(
     }
   },
   { body: createSweepstakeSchema }
+)
+
+export const updateSweepstake = defineAction(
+  {
+    method: 'patch',
+    path: '/iam/v1/sweepstakes/{id}',
+    summary: 'Atualizar bolão (Admin)',
+    tags: ['IAM - Bolões'],
+    authenticate: true,
+    responses: {
+      200: { description: 'Sucesso', schema: sweepstakeSchema }
+    }
+  },
+  async ({ params, data, manageError }: ManageRequestBody<UpdateSweepstakeRequest>): ManageRequestResponse<SweepstakeResponse> => {
+    try {
+      const sweepstake = await sweepstakeRepository.update(params.id, data)
+
+      if (!sweepstake) return manageError({ code: 'not_found' })
+
+      return sweepstake
+    } catch (error) {
+      return manageError({ code: 'internal_error', error })
+    }
+  },
+  { params: sweepstakeParamsSchema, body: updateSweepstakeSchema }
+)
+
+export const deleteSweepstake = defineAction(
+  {
+    method: 'delete',
+    path: '/iam/v1/sweepstakes/{id}',
+    summary: 'Remover bolão (Admin)',
+    tags: ['IAM - Bolões'],
+    authenticate: true,
+    responses: {
+      204: { description: 'Sucesso' }
+    }
+  },
+  async ({ params, manageError }: ManageRequestBody<DeleteSweepstakeRequest>): ManageRequestResponse => {
+    try {
+      const deleted = await sweepstakeRepository.delete(params.id)
+
+      if (!deleted) return manageError({ code: 'not_found' })
+    } catch (error) {
+      return manageError({ code: 'internal_error', error })
+    }
+  },
+  { params: sweepstakeParamsSchema }
 )
 
 export const getSweepstakeDetails = defineAction(

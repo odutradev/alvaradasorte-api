@@ -42,6 +42,16 @@ const sweepstakeRepository = {
     await ref.set(merged)
 
     return merged as SweepstakeType
+  },
+  delete: async (id: string): Promise<boolean> => {
+    const ref = firebaseDb.ref(`${REF_PATH}/${id}`)
+    const snapshot = await ref.once('value')
+
+    if (!snapshot.exists()) return false
+
+    await ref.remove()
+
+    return true
   }
 }
 
