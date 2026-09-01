@@ -1,3 +1,4 @@
+import participationRepository from '@module/repositories/participation/index'
 import { firebaseDb } from '@core/database/connection'
 
 import type { CreateSweepstakePayload, UpdateSweepstakePayload, SweepstakeType } from './types'
@@ -49,6 +50,7 @@ const sweepstakeRepository = {
 
     if (!snapshot.exists()) return false
 
+    await participationRepository.deleteBySweepstakeId(id)
     await ref.remove()
 
     return true

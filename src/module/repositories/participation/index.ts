@@ -1,4 +1,4 @@
-import { firebaseDb } from '@core/database/connection'
+import { firebaseDb, firebaseStorage } from '@core/database/connection'
 
 import type { CreateParticipationPayload, ParticipationType } from './types'
 
@@ -41,6 +41,24 @@ const participationRepository = {
     await ref.set(payload)
 
     return payload
+  },
+  deleteBySweepstakeId: async (sweepstakeId: string): Promise<void> => {
+    const participations = await participationRepository.findBySweepstakeId(sweepstakeId)
+
+    try {
+      const bucket = firebaseStorage.bucket()
+      await bucket.deleteFiles({ prefix: `receipts/${sweepstakeId}/` })
+    } catch {}
+
+    const updates: Record<string, null> = {}
+
+    participations.forEach((p) => {
+      updates[`${REF_PATH}/${p.id}`] = null
+    })
+
+    if (Object.keys(updates).length > 0) {
+      await firebaseDb.ref().update(updates)
+    }
   }
 }
 
