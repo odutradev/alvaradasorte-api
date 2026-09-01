@@ -11,7 +11,7 @@ const participationRepository = {
 
     if (!data) return []
 
-    return Object.entries(data).map(([id, item]) => ({ ...item, id }))
+    return Object.entries(data).map(([id, item]) => ({ ...item, quotaCount: item.quotaCount ?? 1, id }))
   },
   findBySweepstakeId: async (sweepstakeId: string): Promise<ParticipationType[]> => {
     const snapshot = await firebaseDb.ref(REF_PATH).orderByChild('sweepstakeId').equalTo(sweepstakeId).once('value')
@@ -19,7 +19,7 @@ const participationRepository = {
 
     if (!data) return []
 
-    return Object.entries(data).map(([id, item]) => ({ ...item, id }))
+    return Object.entries(data).map(([id, item]) => ({ ...item, quotaCount: item.quotaCount ?? 1, id }))
   },
   findByUserAndSweepstake: async (userId: string, sweepstakeId: string): Promise<ParticipationType | null> => {
     const snapshot = await firebaseDb.ref(REF_PATH).orderByChild('sweepstakeId').equalTo(sweepstakeId).once('value')
@@ -27,7 +27,7 @@ const participationRepository = {
 
     if (!data) return null
 
-    const participations = Object.entries(data).map(([id, item]) => ({ ...item, id }))
+    const participations = Object.entries(data).map(([id, item]) => ({ ...item, quotaCount: item.quotaCount ?? 1, id }))
     const found = participations.find((p) => p.userId === userId)
 
     return found ?? null
@@ -36,7 +36,7 @@ const participationRepository = {
     const ref = firebaseDb.ref(REF_PATH).push()
     const id = ref.key as string
     const now = new Date().toISOString()
-    const payload = { ...data, id, createdAt: now }
+    const payload = { ...data, quotaCount: data.quotaCount ?? 1, id, createdAt: now }
 
     await ref.set(payload)
 

@@ -11,6 +11,7 @@ export const participationSchema = z.object({
   userPhone: z.string().openapi({ example: '(34) 99999-0000' }),
   userDepartment: z.string().openapi({ example: 'Tecnologia' }),
   receiptUrl: z.string().openapi({ example: 'receipts/bolao-id/user-uid-123456789.png' }),
+  quotaCount: z.number().int().min(1).default(1).openapi({ example: 2 }),
   createdAt: z.string().openapi({ example: '2023-01-01T00:00:00.000Z' })
 }).openapi('ParticipationResponse')
 
@@ -41,9 +42,14 @@ export const sweepstakeListItemSchema = sweepstakeSchema.extend({
   }),
   userParticipation: z.object({
     isParticipant: z.boolean().openapi({ example: true }),
+    quotaCount: z.number().int().min(0).openapi({ example: 2 }),
     joinedAt: z.string().nullable().openapi({ example: '2023-01-01T00:00:00.000Z' })
   }).optional()
 }).openapi('SweepstakeListItemResponse')
+
+export const joinSweepstakeBodySchema = z.object({
+  quotaCount: z.coerce.number().int().min(1).default(1).openapi({ example: 1 })
+}).openapi('JoinSweepstakeBody')
 
 export const createSweepstakeSchema = z.object({
   title: z.string().min(1).openapi({ example: 'Bolão da Copa' }),

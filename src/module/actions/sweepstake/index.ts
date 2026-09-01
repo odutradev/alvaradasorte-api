@@ -1,4 +1,4 @@
-import { listSweepstakesResponseSchema, listSweepstakesQuerySchema, setSweepstakeResultSchema, addSweepstakeGamesSchema, sweepstakeDetailsSchema, updateSweepstakeSchema, createSweepstakeSchema, sweepstakeParamsSchema, sweepstakeSchema } from './schemas'
+import { listSweepstakesResponseSchema, listSweepstakesQuerySchema, setSweepstakeResultSchema, addSweepstakeGamesSchema, sweepstakeDetailsSchema, updateSweepstakeSchema, createSweepstakeSchema, sweepstakeParamsSchema, joinSweepstakeBodySchema, sweepstakeSchema } from './schemas'
 import participationRepository from '@module/repositories/participation/index'
 import sweepstakeRepository from '@module/repositories/sweepstake/index'
 import userRepository from '@module/repositories/user/index'
@@ -32,14 +32,23 @@ export const listSweepstakes = defineAction(
 
       const mappedSweepstakes = sweepstakes.map((sweepstake) => {
         const sweepstakeParticipations = participations.filter((p) => p.sweepstakeId === sweepstake.id)
-        const filledQuotas = sweepstakeParticipations.length
+        const filledQuotas = sweepstakeParticipations.reduce((acc, p) => acc + (p.quotaCount ?? 1), 0)
 
-        const userParticipationRecord = sweepstakeParticipations.find((p) => p.userId === targetUserId)
+        const userParticipations = targetUserId
+          ? sweepstakeParticipations.filter((p) => p.userId === targetUserId)
+          : []
+
+        const isParticipant = userParticipations.length > 0
+        const userQuotaCount = userParticipations.reduce((acc, p) => acc + (p.quotaCount ?? 1), 0)
+        const firstJoinedAt = isParticipant
+          ? userParticipations.reduce((oldest, p) => (p.createdAt < oldest ? p.createdAt : oldest), userParticipations[0].createdAt)
+          : null
 
         const userParticipation = targetUserId
           ? {
-              isParticipant: !!userParticipationRecord,
-              joinedAt: userParticipationRecord?.createdAt ?? null
+              isParticipant,
+              quotaCount: userQuotaCount,
+              joinedAt: firstJoinedAt
             }
           : undefined
 
@@ -190,7 +199,10 @@ export const joinSweepstake = defineAction(
         'multipart/form-data': {
           schema: {
             type: 'object',
-            properties: { receipt: { type: 'string', format: 'binary' } }
+            properties: {
+              receipt: { type: 'string', format: 'binary' },
+              quotaCount: { type: 'integer', minimum: 1, default: 1 }
+            }
           }
         }
       }
@@ -199,20 +211,21 @@ export const joinSweepstake = defineAction(
       204: { description: 'Sucesso' }
     }
   },
-  async ({ ids, params, file, manageError }: ManageRequestBody<JoinSweepstakeRequest>): ManageRequestResponse => {
+  async ({ ids, params, data, file, manageError }: ManageRequestBody<JoinSweepstakeRequest>): ManageRequestResponse => {
     if (!ids.userId) return manageError({ code: 'unauthorized' })
     if (!file) return manageError({ code: 'bad_request', details: 'Comprovante não enviado' })
 
+    const requestedQuotaCount = data?.quotaCount ?? 1
+
     try {
-      const [user, sweepstake, existing] = await Promise.all([
+      const [user, sweepstake, participations] = await Promise.all([
         userRepository.findById(ids.userId),
         sweepstakeRepository.findById(params.id),
-        participationRepository.findByUserAndSweepstake(ids.userId, params.id)
+        participationRepository.findBySweepstakeId(params.id)
       ])
 
       if (!user) return manageError({ code: 'user_not_found' })
       if (!sweepstake) return manageError({ code: 'not_found' })
-      if (existing) return manageError({ code: 'conflict', details: 'Usuário já participa deste bolão' })
 
       const missingProfileInfo = !user.fullName || !user.department || !user.phone
 
@@ -222,10 +235,11 @@ export const joinSweepstake = defineAction(
 
       if (isClosed) return manageError({ code: 'bad_request', details: 'Data limite para compra excedida' })
 
-      const participations = await participationRepository.findBySweepstakeId(params.id)
-      const noQuotas = participations.length >= sweepstake.availableQuotas
+      const currentFilledQuotas = participations.reduce((acc, p) => acc + (p.quotaCount ?? 1), 0)
+      const remainingQuotas = sweepstake.availableQuotas - currentFilledQuotas
 
-      if (noQuotas) return manageError({ code: 'bad_request', details: 'Cotas esgotadas' })
+      if (remainingQuotas <= 0) return manageError({ code: 'bad_request', details: 'Cotas esgotadas' })
+      if (requestedQuotaCount > remainingQuotas) return manageError({ code: 'bad_request', details: `Apenas ${remainingQuotas} cota(s) disponível(is)` })
 
       const bucket = firebaseStorage.bucket()
       const fileExtension = file.originalname.split('.').pop()
@@ -240,7 +254,8 @@ export const joinSweepstake = defineAction(
         userName: user.fullName as string,
         userPhone: user.phone as string,
         userDepartment: user.department as string,
-        receiptUrl: filePath
+        receiptUrl: filePath,
+        quotaCount: requestedQuotaCount
       }
 
       await participationRepository.create(payload)
@@ -248,7 +263,7 @@ export const joinSweepstake = defineAction(
       return manageError({ code: 'internal_error', error })
     }
   },
-  { params: sweepstakeParamsSchema }
+  { params: sweepstakeParamsSchema, body: joinSweepstakeBodySchema }
 )
 
 export const addSweepstakeGames = defineAction(
