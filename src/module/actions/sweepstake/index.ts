@@ -1,4 +1,4 @@
-import { listSweepstakesResponseSchema, listSweepstakesQuerySchema, setSweepstakeResultSchema, addSweepstakeGamesSchema, sweepstakeDetailsSchema, updateSweepstakeSchema, createSweepstakeSchema, sweepstakeParamsSchema, joinSweepstakeBodySchema, sweepstakeSchema } from './schemas'
+import { deleteParticipationParamsSchema, addManualParticipationBodySchema, listSweepstakesResponseSchema, listSweepstakesQuerySchema, setSweepstakeResultSchema, addSweepstakeGamesSchema, sweepstakeDetailsSchema, updateSweepstakeSchema, createSweepstakeSchema, sweepstakeParamsSchema, joinSweepstakeBodySchema, participationSchema, sweepstakeSchema } from './schemas'
 import participationRepository from '@module/repositories/participation/index'
 import sweepstakeRepository from '@module/repositories/sweepstake/index'
 import userRepository from '@module/repositories/user/index'
@@ -7,7 +7,7 @@ import defineAction from '@core/factories/defineAction'
 import upload from '@core/middlewares/upload'
 import { isPast } from '@core/utils/date'
 
-import type { SetSweepstakeResultRequest, AddSweepstakeGamesRequest, SweepstakeDetailsResponse, DeleteSweepstakeRequest, UpdateSweepstakeRequest, CreateSweepstakeRequest, SweepstakeParamsRequest, ListSweepstakesResponse, ListSweepstakesRequest, JoinSweepstakeRequest, SweepstakeResponse } from './types'
+import type { AddManualParticipationRequest, DeleteParticipationRequest, SetSweepstakeResultRequest, AddSweepstakeGamesRequest, SweepstakeDetailsResponse, DeleteSweepstakeRequest, UpdateSweepstakeRequest, CreateSweepstakeRequest, SweepstakeParamsRequest, ListSweepstakesResponse, ListSweepstakesRequest, JoinSweepstakeRequest, ParticipationResponse, SweepstakeResponse } from './types'
 import type { ManageRequestResponse, ManageRequestBody } from '@core/middlewares/manageRequest/types'
 
 export const listSweepstakes = defineAction(
@@ -318,4 +318,82 @@ export const setSweepstakeResult = defineAction(
     }
   },
   { params: sweepstakeParamsSchema, body: setSweepstakeResultSchema }
+)
+
+export const addManualParticipation = defineAction(
+  {
+    method: 'post',
+    path: '/iam/v1/sweepstakes/{id}/participations/manual',
+    summary: 'Adicionar participação manualmente (Admin)',
+    tags: ['IAM - Bolões'],
+    authenticate: true,
+    responses: {
+      200: { description: 'Sucesso', schema: participationSchema }
+    }
+  },
+  async ({ params, data, manageError }: ManageRequestBody<AddManualParticipationRequest>): ManageRequestResponse<ParticipationResponse> => {
+    try {
+      const user = await userRepository.findByEmail(data.email)
+
+      if (!user) return manageError({ code: 'bad_request', details: 'Usuário não encontrado com este e-mail' })
+
+      const [sweepstake, participations] = await Promise.all([
+        sweepstakeRepository.findById(params.id),
+        participationRepository.findBySweepstakeId(params.id)
+      ])
+
+      if (!sweepstake) return manageError({ code: 'not_found' })
+
+      const requestedQuotaCount = data.quotaCount ?? 1
+      const currentFilledQuotas = participations.reduce((acc, p) => acc + (p.quotaCount ?? 1), 0)
+      const remainingQuotas = sweepstake.availableQuotas - currentFilledQuotas
+
+      if (remainingQuotas <= 0) return manageError({ code: 'bad_request', details: 'Cotas esgotadas para este bolão' })
+      if (requestedQuotaCount > remainingQuotas) return manageError({ code: 'bad_request', details: `Apenas ${remainingQuotas} cota(s) disponível(is)` })
+
+      const payload = {
+        sweepstakeId: params.id,
+        userId: user.id,
+        userName: (user.fullName || user.name || user.email) as string,
+        userPhone: (user.phone || '') as string,
+        userDepartment: (user.department || '') as string,
+        receiptUrl: '',
+        quotaCount: requestedQuotaCount
+      }
+
+      const participation = await participationRepository.create(payload)
+
+      return participation
+    } catch (error) {
+      return manageError({ code: 'internal_error', error })
+    }
+  },
+  { params: sweepstakeParamsSchema, body: addManualParticipationBodySchema }
+)
+
+export const deleteParticipation = defineAction(
+  {
+    method: 'delete',
+    path: '/iam/v1/sweepstakes/{id}/participations/{participationId}',
+    summary: 'Remover participação de bolão (Admin)',
+    tags: ['IAM - Bolões'],
+    authenticate: true,
+    responses: {
+      204: { description: 'Sucesso' }
+    }
+  },
+  async ({ params, manageError }: ManageRequestBody<DeleteParticipationRequest>): ManageRequestResponse => {
+    try {
+      const participation = await participationRepository.findById(params.participationId)
+
+      if (!participation || participation.sweepstakeId !== params.id) {
+        return manageError({ code: 'not_found' })
+      }
+
+      await participationRepository.delete(params.participationId)
+    } catch (error) {
+      return manageError({ code: 'internal_error', error })
+    }
+  },
+  { params: deleteParticipationParamsSchema }
 )

@@ -90,3 +90,13 @@ export const listSweepstakesQuerySchema = z.object({
 export const sweepstakeParamsSchema = z.object({
   id: z.string().openapi({ example: 'chave-unica' })
 })
+
+export const addManualParticipationBodySchema = z.object({
+  email: z.string().email().openapi({ example: 'usuario@exemplo.com' }),
+  quotaCount: z.number().int().min(1).optional().default(1).openapi({ example: 1 })
+}).openapi('AddManualParticipationBody')
+
+export const deleteParticipationParamsSchema = z.object({
+  id: z.string().openapi({ example: 'bolao-id' }),
+  participationId: z.string().openapi({ example: 'participacao-id' })
+}).openapi('DeleteParticipationParams')

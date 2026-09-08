@@ -42,6 +42,33 @@ const participationRepository = {
 
     return payload
   },
+  findById: async (id: string): Promise<ParticipationType | null> => {
+    const snapshot = await firebaseDb.ref(`${REF_PATH}/${id}`).once('value')
+
+    if (!snapshot.exists()) return null
+
+    const data = snapshot.val() as ParticipationType
+
+    return { ...data, quotaCount: data.quotaCount ?? 1, id }
+  },
+  delete: async (id: string): Promise<boolean> => {
+    const snapshot = await firebaseDb.ref(`${REF_PATH}/${id}`).once('value')
+
+    if (!snapshot.exists()) return false
+
+    const participation = snapshot.val() as ParticipationType
+
+    if (participation.receiptUrl) {
+      try {
+        const bucket = firebaseStorage.bucket()
+        await bucket.file(participation.receiptUrl).delete()
+      } catch {}
+    }
+
+    await firebaseDb.ref(`${REF_PATH}/${id}`).remove()
+
+    return true
+  },
   deleteBySweepstakeId: async (sweepstakeId: string): Promise<void> => {
     const participations = await participationRepository.findBySweepstakeId(sweepstakeId)
 
