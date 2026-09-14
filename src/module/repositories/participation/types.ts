@@ -5,6 +5,7 @@ export type ParticipationType = {
   userName: string
   userPhone: string
   userDepartment: string
+  userPhotoUrl?: string
   receiptUrl: string
   quotaCount: number
   createdAt: string
@@ -13,3 +14,6 @@ export type ParticipationType = {
 export type CreateParticipationPayload = Omit<ParticipationType, 'id' | 'createdAt'> & {
   quotaCount?: number
 }
+
+export type UpdateParticipationPayload = Partial<Omit<ParticipationType, 'id' | 'createdAt' | 'sweepstakeId' | 'userId'>>
+

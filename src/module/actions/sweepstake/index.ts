@@ -1,4 +1,4 @@
-import { deleteParticipationParamsSchema, addManualParticipationBodySchema, listSweepstakesResponseSchema, listSweepstakesQuerySchema, setSweepstakeResultSchema, addSweepstakeGamesSchema, sweepstakeDetailsSchema, updateSweepstakeSchema, createSweepstakeSchema, sweepstakeParamsSchema, joinSweepstakeBodySchema, participationSchema, sweepstakeSchema } from './schemas'
+import { updateParticipationBodySchema, deleteParticipationParamsSchema, addManualParticipationBodySchema, listSweepstakesResponseSchema, listSweepstakesQuerySchema, setSweepstakeResultSchema, addSweepstakeGamesSchema, sweepstakeDetailsSchema, updateSweepstakeSchema, createSweepstakeSchema, sweepstakeParamsSchema, joinSweepstakeBodySchema, participationSchema, sweepstakeSchema } from './schemas'
 import participationRepository from '@module/repositories/participation/index'
 import sweepstakeRepository from '@module/repositories/sweepstake/index'
 import userRepository from '@module/repositories/user/index'
@@ -7,7 +7,8 @@ import defineAction from '@core/factories/defineAction'
 import upload from '@core/middlewares/upload'
 import { isPast } from '@core/utils/date'
 
-import type { AddManualParticipationRequest, DeleteParticipationRequest, SetSweepstakeResultRequest, AddSweepstakeGamesRequest, SweepstakeDetailsResponse, DeleteSweepstakeRequest, UpdateSweepstakeRequest, CreateSweepstakeRequest, SweepstakeParamsRequest, ListSweepstakesResponse, ListSweepstakesRequest, JoinSweepstakeRequest, ParticipationResponse, SweepstakeResponse } from './types'
+import type { UpdateParticipationRequest, AddManualParticipationRequest, DeleteParticipationRequest, SetSweepstakeResultRequest, AddSweepstakeGamesRequest, SweepstakeDetailsResponse, DeleteSweepstakeRequest, UpdateSweepstakeRequest, CreateSweepstakeRequest, SweepstakeParamsRequest, ListSweepstakesResponse, ListSweepstakesRequest, JoinSweepstakeRequest, ParticipationResponse, SweepstakeResponse } from './types'
+import type { ParticipationType } from '@module/repositories/participation/types'
 import type { ManageRequestResponse, ManageRequestBody } from '@core/middlewares/manageRequest/types'
 
 export const listSweepstakes = defineAction(
@@ -164,21 +165,32 @@ export const getSweepstakeDetails = defineAction(
       if (!sweepstake) return manageError({ code: 'not_found' })
 
       const bucket = firebaseStorage.bucket()
-      const participationsWithSignedUrls = await Promise.all(
+      const participationsWithDetails = await Promise.all(
         participations.map(async (p) => {
-          try {
-            const [signedUrl] = await bucket.file(p.receiptUrl).getSignedUrl({
-              action: 'read',
-              expires: Date.now() + 15 * 60 * 1000
-            })
-            return { ...p, receiptUrl: signedUrl }
-          } catch {
-            return p
+          let receiptUrl = p.receiptUrl
+          if (p.receiptUrl) {
+            try {
+              const [signedUrl] = await bucket.file(p.receiptUrl).getSignedUrl({
+                action: 'read',
+                expires: Date.now() + 15 * 60 * 1000
+              })
+              receiptUrl = signedUrl
+            } catch {}
           }
+
+          let userPhotoUrl = p.userPhotoUrl
+          if (p.userId) {
+            try {
+              const user = await userRepository.findById(p.userId)
+              if (user?.photoUrl) userPhotoUrl = user.photoUrl
+            } catch {}
+          }
+
+          return { ...p, receiptUrl, userPhotoUrl }
         })
       )
 
-      return { ...sweepstake, participations: participationsWithSignedUrls }
+      return { ...sweepstake, participations: participationsWithDetails }
     } catch (error) {
       return manageError({ code: 'internal_error', error })
     }
@@ -396,4 +408,64 @@ export const deleteParticipation = defineAction(
     }
   },
   { params: deleteParticipationParamsSchema }
+)
+
+export const updateParticipation = defineAction(
+  {
+    method: 'patch',
+    path: '/iam/v1/sweepstakes/{id}/participations/{participationId}',
+    summary: 'Atualizar participação de bolão (Admin)',
+    tags: ['IAM - Bolões'],
+    authenticate: true,
+    responses: {
+      200: { description: 'Sucesso', schema: participationSchema }
+    }
+  },
+  async ({ params, data, manageError }: ManageRequestBody<UpdateParticipationRequest>): ManageRequestResponse<ParticipationResponse> => {
+    try {
+      const participation = await participationRepository.findById(params.participationId)
+
+      if (!participation || participation.sweepstakeId !== params.id) {
+        return manageError({ code: 'not_found' })
+      }
+
+      if (data.quotaCount !== undefined && data.quotaCount !== participation.quotaCount) {
+        const [sweepstake, participations] = await Promise.all([
+          sweepstakeRepository.findById(params.id),
+          participationRepository.findBySweepstakeId(params.id)
+        ])
+
+        if (!sweepstake) return manageError({ code: 'not_found' })
+
+        const currentFilledQuotas = participations.reduce((acc, p) => acc + (p.quotaCount ?? 1), 0)
+        const newTotalQuotas = currentFilledQuotas - participation.quotaCount + data.quotaCount
+
+        if (newTotalQuotas > sweepstake.availableQuotas) {
+          const maxAllowed = sweepstake.availableQuotas - (currentFilledQuotas - participation.quotaCount)
+          return manageError({ code: 'bad_request', details: `Apenas ${maxAllowed} cota(s) disponível(is) para esta alteração` })
+        }
+      }
+
+      const updateData: Partial<ParticipationType> = {}
+      if (data.quotaCount !== undefined) updateData.quotaCount = data.quotaCount
+      if (data.userName !== undefined) updateData.userName = data.userName
+      if (data.userDepartment !== undefined) updateData.userDepartment = data.userDepartment
+      if (data.userPhone !== undefined) updateData.userPhone = data.userPhone
+
+      const updatedParticipation = await participationRepository.update(params.participationId, updateData)
+
+      if (participation.userId && (data.userName || data.userDepartment || data.userPhone)) {
+        await userRepository.update(participation.userId, {
+          ...(data.userName && { name: data.userName, fullName: data.userName }),
+          ...(data.userDepartment && { department: data.userDepartment }),
+          ...(data.userPhone && { phone: data.userPhone })
+        })
+      }
+
+      return updatedParticipation!
+    } catch (error) {
+      return manageError({ code: 'internal_error', error })
+    }
+  },
+  { params: deleteParticipationParamsSchema, body: updateParticipationBodySchema }
 )

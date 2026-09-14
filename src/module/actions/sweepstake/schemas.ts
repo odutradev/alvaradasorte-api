@@ -10,6 +10,7 @@ export const participationSchema = z.object({
   userName: z.string().openapi({ example: 'John Doe' }),
   userPhone: z.string().openapi({ example: '(34) 99999-0000' }),
   userDepartment: z.string().openapi({ example: 'Tecnologia' }),
+  userPhotoUrl: z.string().optional().openapi({ example: 'https://lh3.googleusercontent.com/a/abc' }),
   receiptUrl: z.string().openapi({ example: 'receipts/bolao-id/user-uid-123456789.png' }),
   quotaCount: z.number().int().min(1).default(1).openapi({ example: 2 }),
   createdAt: z.string().openapi({ example: '2023-01-01T00:00:00.000Z' })
@@ -100,3 +101,10 @@ export const deleteParticipationParamsSchema = z.object({
   id: z.string().openapi({ example: 'bolao-id' }),
   participationId: z.string().openapi({ example: 'participacao-id' })
 }).openapi('DeleteParticipationParams')
+
+export const updateParticipationBodySchema = z.object({
+  quotaCount: z.number().int().min(1).optional().openapi({ example: 2 }),
+  userName: z.string().min(1).optional().openapi({ example: 'John Doe' }),
+  userDepartment: z.string().min(1).optional().openapi({ example: 'Tecnologia' }),
+  userPhone: z.string().min(1).optional().openapi({ example: '(34) 99999-0000' })
+}).openapi('UpdateParticipationBody')

@@ -1,6 +1,6 @@
 import { firebaseDb, firebaseStorage } from '@core/database/connection'
 
-import type { CreateParticipationPayload, ParticipationType } from './types'
+import type { CreateParticipationPayload, UpdateParticipationPayload, ParticipationType } from './types'
 
 const REF_PATH = 'participations'
 
@@ -50,6 +50,19 @@ const participationRepository = {
     const data = snapshot.val() as ParticipationType
 
     return { ...data, quotaCount: data.quotaCount ?? 1, id }
+  },
+  update: async (id: string, data: UpdateParticipationPayload): Promise<ParticipationType | null> => {
+    const ref = firebaseDb.ref(`${REF_PATH}/${id}`)
+    const snapshot = await ref.once('value')
+
+    if (!snapshot.exists()) return null
+
+    await ref.update(data)
+
+    const updatedSnapshot = await ref.once('value')
+    const item = updatedSnapshot.val() as ParticipationType
+
+    return { ...item, quotaCount: item.quotaCount ?? 1, id }
   },
   delete: async (id: string): Promise<boolean> => {
     const snapshot = await firebaseDb.ref(`${REF_PATH}/${id}`).once('value')
