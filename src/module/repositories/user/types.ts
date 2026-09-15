@@ -1,3 +1,5 @@
+import type { PaginationParams } from '@core/factories/pagination/types'
+
 export type UserType = {
   id: string
   role: 'admin' | 'user'
@@ -15,3 +17,8 @@ export type UserType = {
 export type CreateUserPayload = Omit<UserType, 'id' | 'createdAt' | 'updatedAt' | 'role'>
 
 export type UpdateUserPayload = Partial<Omit<UserType, 'id' | 'createdAt' | 'updatedAt'>>
+
+export type FindAllUserFilters = PaginationParams & {
+  filters?: string
+  search?: string
+}

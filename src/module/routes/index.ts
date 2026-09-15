@@ -2,6 +2,7 @@ import { Router } from 'express'
 
 import { updateParticipation, addManualParticipation, deleteParticipation, getSweepstakeDetails, addSweepstakeGames, setSweepstakeResult, updateSweepstake, deleteSweepstake, createSweepstake, listSweepstakes, joinSweepstake } from '@module/actions/sweepstake/index'
 import { updatePreset, createPreset, deletePreset, listPresets } from '@module/actions/preset/index'
+import { updateUser, deleteUser, listUsers } from '@module/actions/user/index'
 import { syncAuthUser, updateMe, getMe } from '@module/actions/auth/index'
 import adminMiddleware from '@module/middlewares/admin'
 import authMiddleware from '@module/middlewares/auth'
@@ -11,6 +12,10 @@ const defaultModuleRouter = Router()
 defaultModuleRouter.post('/auth/sync', syncAuthUser)
 defaultModuleRouter.patch('/auth/me', authMiddleware, updateMe)
 defaultModuleRouter.get('/auth/me', authMiddleware, getMe)
+
+defaultModuleRouter.get('/users', authMiddleware, adminMiddleware, listUsers)
+defaultModuleRouter.patch('/users/:id', authMiddleware, adminMiddleware, updateUser)
+defaultModuleRouter.delete('/users/:id', authMiddleware, adminMiddleware, deleteUser)
 
 defaultModuleRouter.get('/presets', authMiddleware, adminMiddleware, listPresets)
 defaultModuleRouter.post('/presets', authMiddleware, adminMiddleware, createPreset)
